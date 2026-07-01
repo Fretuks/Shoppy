@@ -6,6 +6,7 @@ import SecondaryButton from '../components/SecondaryButton';
 import AppHeader from '../components/layout/AppHeader';
 import ScreenContainer from '../components/layout/ScreenContainer';
 import SectionTitle from '../components/layout/SectionTitle';
+import ProductImage from '../components/product/ProductImage';
 import ProductScoreBadge from '../components/product/ProductScoreBadge';
 import RatingCategoryRow from '../components/product/RatingCategoryRow';
 import { calculateProductRating } from '../services/ratingService';
@@ -26,6 +27,7 @@ export default function ProductDetailScreen({ product, preferences, onBack, onAd
       <AppHeader title="Produktbewertung" subtitle="Persönliche Einschätzung" onBack={onBack} />
 
       <View style={styles.productPanel}>
+        <ProductImage imageUrl={product.imageUrl} size="large" />
         <View style={styles.topRow}>
           <View style={styles.copy}>
             <Text style={styles.brand}>{product.brand || 'Ohne Marke'}</Text>

@@ -2,19 +2,25 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../utils/constants';
 import { formatPrice } from '../../utils/formatPrice';
+import ProductImage from './ProductImage';
 import ProductScoreBadge from './ProductScoreBadge';
 
 export default function ProductCard({ product, rating, onPress }) {
   return (
     <Pressable accessibilityRole="button" onPress={onPress} style={styles.card}>
       <View style={styles.topRow}>
+        <ProductImage imageUrl={product.imageUrl} />
         <View style={styles.copy}>
           <Text style={styles.name}>{product.name}</Text>
-          <Text style={styles.meta}>{product.brand || 'Ohne Marke'} · {formatPrice(product.price, product.currency)}</Text>
+          <Text style={styles.meta}>
+            {product.brand || 'Ohne Marke'} · {formatPrice(product.price, product.currency)}
+          </Text>
+          <Text style={styles.note}>
+            {product.category || 'Produkt'} · Barcode {product.barcode}
+          </Text>
         </View>
         {rating ? <ProductScoreBadge status={rating.overallStatus} score={rating.overallScore} /> : null}
       </View>
-      <Text style={styles.note}>{product.category || 'Produkt'} · Barcode {product.barcode}</Text>
     </Pressable>
   );
 }
@@ -48,6 +54,8 @@ const styles = StyleSheet.create({
   },
   note: {
     color: colors.muted,
-    fontSize: 13
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 8
   }
 });
