@@ -134,14 +134,26 @@ function rateBudget(product, preferences) {
   }
 
   const share = product.price / preferences.maxBudgetPerShoppingTrip;
+  const periodLabel = budgetPeriodLabel(preferences.budgetPeriod);
 
   if (share <= 0.08) {
-    return { status: 'good', message: 'Preis passt gut zu deinem Einkaufsbudget.' };
+    return { status: 'good', message: `Preis passt gut zu deinem Budget pro ${periodLabel}.` };
   }
 
   if (share <= 0.18) {
-    return { status: 'medium', message: 'Preis ist spürbar, aber noch im Rahmen.' };
+    return { status: 'medium', message: `Preis ist für dein Budget pro ${periodLabel} spürbar, aber noch im Rahmen.` };
   }
 
-  return { status: 'critical', message: 'Preis belastet dein Einkaufsbudget stark.' };
+  return { status: 'critical', message: `Preis belastet dein Budget pro ${periodLabel} stark.` };
+}
+
+function budgetPeriodLabel(period) {
+  const labels = {
+    day: 'Tag',
+    week: 'Woche',
+    month: 'Monat',
+    shoppingTrip: 'Einkauf'
+  };
+
+  return labels[period] || labels.week;
 }

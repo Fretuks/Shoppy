@@ -17,6 +17,7 @@ export const defaultPreferences = {
   preferredDiet: 'lowSugar',
   preferBio: true,
   maxBudgetPerShoppingTrip: 45,
+  budgetPeriod: 'week',
   currency: 'CHF',
   offlineModeEnabled: false,
   sustainabilityPriority: 'medium',
@@ -29,4 +30,11 @@ export const dietLabels = {
   vegan: 'Vegan',
   lowSugar: 'Wenig Zucker',
   highProtein: 'Proteinreich'
+};
+
+export const budgetPeriodLabels = {
+  day: 'Tag',
+  week: 'Woche',
+  month: 'Monat',
+  shoppingTrip: 'Einkauf'
 };

@@ -1,8 +1,10 @@
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { colors } from '../../utils/constants';
+import { budgetPeriodLabels, colors } from '../../utils/constants';
 
-export default function BudgetInput({ value, currency, onChangeValue }) {
+const budgetPeriods = ['day', 'week', 'month', 'shoppingTrip'];
+
+export default function BudgetInput({ value, currency, period, onChangePeriod, onChangeValue }) {
   return (
     <View style={styles.wrap}>
       <Text style={styles.label}>Maximales Einkaufsbudget</Text>
@@ -15,6 +17,23 @@ export default function BudgetInput({ value, currency, onChangeValue }) {
           value={String(value ?? '')}
         />
       </View>
+      <View style={styles.periodGrid}>
+        {budgetPeriods.map((option) => {
+          const isActive = period === option;
+          return (
+            <Pressable
+              accessibilityRole="button"
+              key={option}
+              onPress={() => onChangePeriod(option)}
+              style={[styles.periodChip, isActive ? styles.activePeriodChip : null]}
+            >
+              <Text style={[styles.periodText, isActive ? styles.activePeriodText : null]}>
+                pro {budgetPeriodLabels[option]}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }
@@ -25,7 +44,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: 8,
     borderWidth: 1,
-    gap: 8,
+    gap: 10,
     padding: 14
   },
   label: {
@@ -52,5 +71,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
     paddingHorizontal: 12,
     paddingVertical: 10
+  },
+  periodGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  periodChip: {
+    alignItems: 'center',
+    borderColor: colors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    flexGrow: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 9
+  },
+  activePeriodChip: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary
+  },
+  periodText: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '800'
+  },
+  activePeriodText: {
+    color: colors.surface
   }
 });

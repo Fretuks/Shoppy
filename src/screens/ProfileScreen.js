@@ -68,7 +68,9 @@ export default function ProfileScreen({ preferences, onChangePreferences }) {
 
       <BudgetInput
         currency={preferences.currency}
+        onChangePeriod={(value) => updatePreference('budgetPeriod', value)}
         onChangeValue={(value) => updatePreference('maxBudgetPerShoppingTrip', value)}
+        period={preferences.budgetPeriod || 'week'}
         value={preferences.maxBudgetPerShoppingTrip}
       />
 

@@ -73,7 +73,7 @@ Die App enthält jetzt einen MVP-Flow mit Bottom-Tabs:
 - Produktdetail: Ampelbewertung nach Allergien, Budget, Ernährung und Nachhaltigkeit
 - Alternativen: bessere Produktvorschläge aus dem lokalen Beispieldatensatz
 - Einkaufsliste: Produkte hinzufügen, abhaken, löschen und Gesamtsumme sehen
-- Profil: Präferenzen, Allergien, Budget, Bio-Vorliebe und Offline-Modus verwalten
+- Profil: Präferenzen, Allergien, Budget mit Zeitraum, Bio-Vorliebe und Offline-Modus verwalten
 
 Beispiel-Barcodes für Tests über Open Food Facts:
 

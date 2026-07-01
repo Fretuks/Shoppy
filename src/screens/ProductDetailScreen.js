@@ -17,24 +17,24 @@ export default function ProductDetailScreen({ product, preferences, onBack, onAd
   const [savedMessage, setSavedMessage] = useState('');
   const [manualPrice, setManualPrice] = useState('');
   const [priceError, setPriceError] = useState('');
-  const rating = useMemo(() => calculateProductRating(product, preferences), [product, preferences]);
   const hasProductPrice = typeof product.price === 'number';
   const currency = product.currency || preferences.currency;
+  const parsedManualPrice = parseManualPrice(manualPrice);
+  const pricedProduct = useMemo(() => ({
+    ...product,
+    currency,
+    price: hasProductPrice ? product.price : parsedManualPrice
+  }), [currency, hasProductPrice, parsedManualPrice, product]);
+  const rating = useMemo(() => calculateProductRating(pricedProduct, preferences), [pricedProduct, preferences]);
 
   function addToList() {
-    const parsedManualPrice = parseManualPrice(manualPrice);
-
     if (!hasProductPrice && parsedManualPrice === undefined) {
       setSavedMessage('');
       setPriceError('Bitte gib einen Preis ein, bevor du das Produkt hinzufügst.');
       return;
     }
 
-    onAddToList({
-      ...product,
-      currency,
-      price: hasProductPrice ? product.price : parsedManualPrice
-    });
+    onAddToList(pricedProduct);
     setPriceError('');
     setSavedMessage('Produkt wurde zur Einkaufsliste hinzugefügt.');
   }
@@ -50,7 +50,7 @@ export default function ProductDetailScreen({ product, preferences, onBack, onAd
             <Text style={styles.brand}>{product.brand || 'Ohne Marke'}</Text>
             <Text style={styles.name}>{product.name}</Text>
             <Text style={styles.meta}>
-              {product.category || 'Produkt'} · {formatPrice(product.price, currency)}
+              {product.category || 'Produkt'} · {formatPrice(pricedProduct.price, currency)}
             </Text>
           </View>
           <ProductScoreBadge status={rating.overallStatus} score={rating.overallScore} />
