@@ -1,0 +1,2 @@
+# Shoppy
+Smart Shopping Companion
