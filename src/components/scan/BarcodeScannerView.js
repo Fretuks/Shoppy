@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../utils/constants';
 
-export default function BarcodeScannerView({ isScanning, onBarcodeScanned }) {
+export default function BarcodeScannerView({ isLoadingProduct, isScanning, onBarcodeScanned }) {
   return (
     <View style={styles.wrap}>
       <CameraView
@@ -16,7 +16,7 @@ export default function BarcodeScannerView({ isScanning, onBarcodeScanned }) {
         <View style={styles.overlay}>
           <View style={styles.frame} />
           <Text style={styles.hint}>
-            Barcode in den Rahmen halten. Bei Problemen manuell suchen.
+            {isLoadingProduct ? 'Produkt wird geladen...' : 'Barcode in den Rahmen halten. Bei Problemen manuell suchen.'}
           </Text>
         </View>
       </CameraView>

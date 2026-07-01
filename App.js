@@ -29,6 +29,7 @@ export default function App() {
   const [preferences, setPreferences] = useState(defaultPreferences);
   const [shoppingList, setShoppingList] = useState(initialShoppingList);
   const [productCache, setProductCache] = useState({});
+  const [manualPrices, setManualPrices] = useState({});
   const [recentProducts, setRecentProducts] = useState([]);
   const [isHydrated, setIsHydrated] = useState(false);
 
@@ -40,11 +41,13 @@ export default function App() {
         storedPreferences,
         storedShoppingList,
         storedProductCache,
+        storedManualPrices,
         storedRecentProducts
       ] = await Promise.all([
         storageService.loadPreferences(defaultPreferences),
         storageService.loadShoppingList(initialShoppingList),
         storageService.loadProductCache(),
+        storageService.loadManualPrices(),
         storageService.loadRecentProducts()
       ]);
 
@@ -52,6 +55,7 @@ export default function App() {
         setPreferences(storedPreferences);
         setShoppingList(storedShoppingList);
         setProductCache(storedProductCache);
+        setManualPrices(storedManualPrices);
         setRecentProducts(storedRecentProducts);
         setIsHydrated(true);
       }
@@ -74,6 +78,10 @@ export default function App() {
   useEffect(() => {
     if (isHydrated) storageService.saveProductCache(productCache);
   }, [isHydrated, productCache]);
+
+  useEffect(() => {
+    if (isHydrated) storageService.saveManualPrices(manualPrices);
+  }, [isHydrated, manualPrices]);
 
   useEffect(() => {
     if (isHydrated) storageService.saveRecentProducts(recentProducts);
@@ -100,6 +108,8 @@ export default function App() {
           onDeleteItem={deleteListItem}
           onStartScan={() => setActiveTab('scan')}
           onToggleItem={toggleListItem}
+          onUpdateItemPrice={updateListItemPrice}
+          preferences={preferences}
           shoppingList={shoppingList}
         />
       );
@@ -122,7 +132,7 @@ export default function App() {
         recentProducts={recentProducts}
       />
     );
-  }, [activeTab, preferences, productCache, recentProducts, shoppingList]);
+  }, [activeTab, manualPrices, preferences, productCache, recentProducts, shoppingList]);
 
   async function scanProductByBarcode(barcode) {
     const result = await lookupProductByBarcode(
@@ -132,18 +142,18 @@ export default function App() {
     );
 
     if (result.status === 'found') {
-      openProduct(result.product);
-      addProductToCache(result.product);
-      addRecentProduct(result.product);
+      const pricedProduct = applyManualPrice(result.product);
+      openProduct(pricedProduct);
     }
 
     return result;
   }
 
   function openProduct(product) {
-    addProductToCache(product);
-    addRecentProduct(product);
-    setRoute({ name: 'productDetail', product });
+    const pricedProduct = applyManualPrice(product);
+    addProductToCache(pricedProduct);
+    addRecentProduct(pricedProduct);
+    setRoute({ name: 'productDetail', product: pricedProduct });
   }
 
   function showAlternatives(product) {
@@ -160,8 +170,57 @@ export default function App() {
   function addRecentProduct(product) {
     setRecentProducts((current) => {
       const withoutDuplicate = current.filter((item) => item.id !== product.id);
-      return [product, ...withoutDuplicate].slice(0, 5);
+      const previous = current.find((item) => item.id === product.id);
+      const scanCount = (previous?.scanCount || 0) + 1;
+      return [{ ...product, scanCount, lastScannedAt: new Date().toISOString() }, ...withoutDuplicate].slice(0, 8);
     });
+  }
+
+  function applyManualPrice(product) {
+    const manualPrice = manualPrices[priceKey(product)];
+
+    if (typeof manualPrice !== 'number') {
+      return product;
+    }
+
+    return {
+      ...product,
+      currency: product.currency || preferences.currency,
+      price: manualPrice
+    };
+  }
+
+  function saveManualPriceForProduct(product, price) {
+    const key = priceKey(product);
+
+    setManualPrices((current) => ({
+      ...current,
+      [key]: price
+    }));
+    setProductCache((current) => {
+      const cachedProduct = current[product.barcode];
+
+      if (!cachedProduct) {
+        return current;
+      }
+
+      return {
+        ...current,
+        [product.barcode]: {
+          ...cachedProduct,
+          currency: product.currency || preferences.currency,
+          price,
+          updatedAt: new Date().toISOString()
+        }
+      };
+    });
+    setRecentProducts((current) =>
+      current.map((item) =>
+        item.id === product.id
+          ? { ...item, currency: product.currency || preferences.currency, price }
+          : item
+      )
+    );
   }
 
   function addProductToShoppingList(product) {
@@ -170,7 +229,14 @@ export default function App() {
       const items = existingItem
         ? current.items.map((item) =>
             item.productId === product.id
-              ? { ...item, quantity: item.quantity + 1 }
+              ? {
+                  ...item,
+                  quantity: item.quantity + 1,
+                  packageQuantityGrams: item.packageQuantityGrams ?? product.packageQuantityGrams,
+                  packageQuantityLabel: item.packageQuantityLabel ?? product.packageQuantityLabel,
+                  servingQuantityGrams: item.servingQuantityGrams ?? product.servingQuantityGrams,
+                  nutrition: item.nutrition ?? product.nutrition
+                }
               : item
           )
         : [
@@ -181,6 +247,12 @@ export default function App() {
               productName: product.name,
               quantity: 1,
               estimatedPrice: product.price,
+              currency: product.currency || current.currency,
+              barcode: product.barcode,
+              packageQuantityGrams: product.packageQuantityGrams,
+              packageQuantityLabel: product.packageQuantityLabel,
+              servingQuantityGrams: product.servingQuantityGrams,
+              nutrition: product.nutrition,
               checked: false,
               addedAt: new Date().toISOString()
             }
@@ -189,6 +261,30 @@ export default function App() {
       return {
         ...current,
         currency: product.currency || current.currency,
+        estimatedTotal: calculateEstimatedTotal(items),
+        items
+      };
+    });
+  }
+
+  function updateListItemPrice(itemId, price) {
+    const itemToUpdate = shoppingList.items.find((item) => item.id === itemId);
+
+    if (itemToUpdate) {
+      saveManualPriceForProduct({
+        id: itemToUpdate.productId,
+        barcode: itemToUpdate.barcode,
+        currency: itemToUpdate.currency || shoppingList.currency
+      }, price);
+    }
+
+    setShoppingList((current) => {
+      const items = current.items.map((item) =>
+        item.id === itemId ? { ...item, estimatedPrice: price } : item
+      );
+
+      return {
+        ...current,
         estimatedTotal: calculateEstimatedTotal(items),
         items
       };
@@ -240,6 +336,7 @@ export default function App() {
         <ProductDetailScreen
           onAddToList={addProductToShoppingList}
           onBack={goBackToTabs}
+          onSaveManualPrice={saveManualPriceForProduct}
           onShowAlternatives={showAlternatives}
           preferences={preferences}
           product={routeProduct}
@@ -283,6 +380,10 @@ function calculateEstimatedTotal(items) {
     const price = typeof item.estimatedPrice === 'number' ? item.estimatedPrice : 0;
     return sum + price * item.quantity;
   }, 0);
+}
+
+function priceKey(product) {
+  return product.barcode || product.id;
 }
 
 const styles = StyleSheet.create({

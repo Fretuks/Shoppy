@@ -9,7 +9,7 @@ export default function ProductCard({ product, rating, onPress }) {
   return (
     <Pressable accessibilityRole="button" onPress={onPress} style={styles.card}>
       <View style={styles.topRow}>
-        <ProductImage imageUrl={product.imageUrl} />
+        <ProductImage imageUrl={product.imageUrl} productName={product.name} />
         <View style={styles.copy}>
           <Text style={styles.name}>{product.name}</Text>
           <Text style={styles.meta}>
@@ -18,11 +18,22 @@ export default function ProductCard({ product, rating, onPress }) {
           <Text style={styles.note}>
             {product.category || 'Produkt'} · Barcode {product.barcode}
           </Text>
+          <Text style={styles.source}>{sourceLabel(product.dataSource)}</Text>
         </View>
         {rating ? <ProductScoreBadge status={rating.overallStatus} score={rating.overallScore} /> : null}
       </View>
     </Pressable>
   );
+}
+
+function sourceLabel(source) {
+  const labels = {
+    cache: 'Lokaler Cache',
+    local: 'Lokale Beispieldaten',
+    'open-food-facts': 'Open Food Facts'
+  };
+
+  return labels[source] || 'Quelle unbekannt';
 }
 
 const styles = StyleSheet.create({
@@ -57,5 +68,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     marginTop: 8
+  },
+  source: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#eef3ef',
+    borderRadius: 8,
+    color: colors.primaryDark,
+    fontSize: 12,
+    fontWeight: '800',
+    marginTop: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4
   }
 });

@@ -7,6 +7,8 @@ import AlternativeProductCard from '../components/product/AlternativeProductCard
 import { findAlternatives } from '../services/alternativesService';
 import { colors } from '../utils/constants';
 
+const DISPLAY_ALTERNATIVE_LIMIT = 5;
+
 export default function AlternativesScreen({ product, preferences, productCache, onBack, onChoose, onOpenProduct }) {
   const [alternatives, setAlternatives] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,11 +43,11 @@ export default function AlternativesScreen({ product, preferences, productCache,
       {!isLoading && alternatives.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyTitle}>Keine Alternative gefunden</Text>
-          <Text style={styles.emptyCopy}>Für dieses Produkt gibt es im lokalen Beispieldatensatz noch keinen besseren Vorschlag.</Text>
+          <Text style={styles.emptyCopy}>Für dieses Produkt wurde in ähnlichen Kategorien noch keine klar bessere Option gefunden.</Text>
         </View>
       ) : null}
 
-      {alternatives.map((item) => (
+      {alternatives.slice(0, DISPLAY_ALTERNATIVE_LIMIT).map((item) => (
         <AlternativeProductCard
           item={item}
           key={item.product.id}

@@ -2,13 +2,15 @@ import { Image, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../utils/constants';
 
-export default function ProductImage({ imageUrl, size = 'card' }) {
+export default function ProductImage({ imageUrl, productName, size = 'card' }) {
   const style = size === 'large' ? styles.large : styles.card;
 
   if (!imageUrl) {
     return (
       <View style={[styles.placeholder, style]}>
-        <Text style={styles.placeholderText}>Kein Bild</Text>
+        <Text style={[styles.placeholderText, size === 'large' ? styles.largePlaceholderText : null]}>
+          {initialsFromName(productName)}
+        </Text>
       </View>
     );
   }
@@ -21,6 +23,15 @@ export default function ProductImage({ imageUrl, size = 'card' }) {
       style={[styles.image, style]}
     />
   );
+}
+
+function initialsFromName(name) {
+  const words = String(name || 'Produkt')
+    .split(/\s+/)
+    .map((word) => word.trim())
+    .filter(Boolean);
+
+  return words.slice(0, 2).map((word) => word[0].toUpperCase()).join('');
 }
 
 const styles = StyleSheet.create({
@@ -48,9 +59,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   placeholderText: {
-    color: colors.muted,
-    fontSize: 12,
+    color: colors.primaryDark,
+    fontSize: 22,
     fontWeight: '800',
     textAlign: 'center'
+  },
+  largePlaceholderText: {
+    fontSize: 54
   }
 });

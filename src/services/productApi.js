@@ -1,5 +1,3 @@
-import { mockProducts } from '../data/mockProducts';
-
 const openFoodFactsBaseUrl = 'https://world.openfoodfacts.org';
 const productFields = [
   'code',
@@ -10,11 +8,15 @@ const productFields = [
   'categories',
   'categories_tags',
   'image_url',
+  'product_quantity',
+  'quantity',
+  'serving_quantity',
   'ingredients_text',
   'ingredients_text_de',
   'ingredients_text_en',
   'allergens_tags',
   'nutriments',
+  'nutrient_levels',
   'nutriscore_grade',
   'ecoscore_grade',
   'labels_tags',
@@ -29,7 +31,7 @@ export async function lookupProductByBarcode(barcode, productCache = {}, offline
   const cachedProduct = productCache[normalizedBarcode] || productCache[barcode];
 
   if (cachedProduct) {
-    return { status: 'found', product: cachedProduct, source: 'cache' };
+    return { status: 'found', product: { ...cachedProduct, dataSource: 'cache' }, source: 'cache' };
   }
 
   if (offlineModeEnabled) {
@@ -81,7 +83,7 @@ export async function searchProducts(query, productCache = {}, offlineModeEnable
   }
 
   if (offlineModeEnabled) {
-    return filterProducts(cachedProducts, normalizedQuery);
+    return filterProducts(markProductsSource(cachedProducts, 'cache'), normalizedQuery);
   }
 
   try {
@@ -90,18 +92,24 @@ export async function searchProducts(query, productCache = {}, offlineModeEnable
     );
 
     if (!response.ok) {
-      return filterProducts([...cachedProducts, ...mockProducts], normalizedQuery);
+      return filterProducts([
+        ...markProductsSource(cachedProducts, 'cache')
+      ], normalizedQuery);
     }
 
     const payload = await response.json();
     const apiProducts = (payload.products || [])
       .filter((product) => product.code)
       .map((product) => mapOpenFoodFactsProduct(product, product.code));
-    const products = [...apiProducts, ...cachedProducts, ...mockProducts];
 
-    return uniqueProducts(filterProducts(products, normalizedQuery));
+    return uniqueProducts(filterProducts([
+      ...apiProducts,
+      ...markProductsSource(cachedProducts, 'cache')
+    ], normalizedQuery));
   } catch (error) {
-    return filterProducts([...cachedProducts, ...mockProducts], normalizedQuery);
+    return filterProducts([
+      ...markProductsSource(cachedProducts, 'cache')
+    ], normalizedQuery);
   }
 }
 
@@ -113,10 +121,15 @@ function mapOpenFoodFactsProduct(product, fallbackBarcode) {
   return {
     id: `off-${barcode}`,
     barcode,
+    dataSource: 'open-food-facts',
     name: product.product_name_de || product.product_name || product.product_name_en || `Produkt ${barcode}`,
     brand: firstTextValue(product.brands),
     category: firstCategory(product.categories, product.categories_tags),
+    categoryTags: normalizeTags(product.categories_tags || []),
     imageUrl: product.image_url,
+    packageQuantityGrams: numberOrUndefined(product.product_quantity),
+    packageQuantityLabel: firstTextValue(product.quantity),
+    servingQuantityGrams: numberOrUndefined(product.serving_quantity),
     price: undefined,
     currency: 'CHF',
     ingredients: parseIngredients(product.ingredients_text_de || product.ingredients_text || product.ingredients_text_en),
@@ -124,9 +137,11 @@ function mapOpenFoodFactsProduct(product, fallbackBarcode) {
     nutrition: {
       caloriesPer100g: numberOrUndefined(nutriments['energy-kcal_100g']),
       sugarPer100g: numberOrUndefined(nutriments.sugars_100g),
+      caffeineMgPer100g: normalizeCaffeineMg(nutriments.caffeine_100g),
       fatPer100g: numberOrUndefined(nutriments.fat_100g),
       proteinPer100g: numberOrUndefined(nutriments.proteins_100g),
       saltPer100g: numberOrUndefined(nutriments.salt_100g),
+      nutrientLevels: normalizeNutrientLevels(product.nutrient_levels),
       nutriScore: normalizeGrade(product.nutriscore_grade)
     },
     sustainability: {
@@ -135,9 +150,23 @@ function mapOpenFoodFactsProduct(product, fallbackBarcode) {
       originCountry: firstOrigin(product.origins, product.origins_tags, product.countries_tags),
       packaging: firstTextValue(product.packaging)
     },
+    dataCompleteness: {
+      allergens: Array.isArray(product.allergens_tags),
+      ecoScore: Boolean(normalizeGrade(product.ecoscore_grade)),
+      ingredients: Boolean(product.ingredients_text_de || product.ingredients_text || product.ingredients_text_en),
+      nutriScore: Boolean(normalizeGrade(product.nutriscore_grade)),
+      nutrition: Boolean(product.nutriments)
+    },
     createdAt: now,
     updatedAt: now
   };
+}
+
+function markProductsSource(products, source) {
+  return products.map((product) => ({
+    ...product,
+    dataSource: product.dataSource || source
+  }));
 }
 
 function normalizeBarcode(barcode) {
@@ -214,9 +243,29 @@ function normalizeAllergens(allergenTags) {
     .filter(Boolean);
 }
 
+function normalizeTags(tags) {
+  return tags
+    .map((tag) => String(tag || '').trim().toLowerCase())
+    .filter(Boolean);
+}
+
 function normalizeGrade(value) {
   const grade = String(value || '').trim().toUpperCase();
   return ['A', 'B', 'C', 'D', 'E'].includes(grade) ? grade : undefined;
+}
+
+function normalizeNutrientLevels(levels = {}) {
+  return {
+    fat: normalizeNutrientLevel(levels.fat),
+    saturatedFat: normalizeNutrientLevel(levels['saturated-fat']),
+    sugars: normalizeNutrientLevel(levels.sugars),
+    salt: normalizeNutrientLevel(levels.salt)
+  };
+}
+
+function normalizeNutrientLevel(value) {
+  const level = String(value || '').trim().toLowerCase();
+  return ['low', 'moderate', 'high'].includes(level) ? level : undefined;
 }
 
 function hasOrganicLabel(labelTags) {
@@ -229,6 +278,15 @@ function hasOrganicLabel(labelTags) {
 function numberOrUndefined(value) {
   const numberValue = Number(value);
   return Number.isFinite(numberValue) ? numberValue : undefined;
+}
+
+function normalizeCaffeineMg(value) {
+  const numberValue = numberOrUndefined(value);
+  if (numberValue === undefined) {
+    return undefined;
+  }
+
+  return numberValue <= 2 ? Math.round(numberValue * 1000) : numberValue;
 }
 
 function cleanTag(tag) {

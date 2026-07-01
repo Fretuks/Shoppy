@@ -16,8 +16,11 @@ export default function RatingCategoryRow({ category, rating }) {
       <View style={styles.copy}>
         <Text style={styles.title}>{labels[category] || category}</Text>
         <Text style={styles.message}>{rating.message}</Text>
+        {(rating.missingData || []).map((message) => (
+          <Text key={message} style={styles.missingData}>{message}</Text>
+        ))}
       </View>
-      <ProductScoreBadge status={rating.status} score={rating.status === 'good' ? 25 : rating.status === 'medium' ? 14 : 0} />
+      <ProductScoreBadge status={rating.status} score={rating.score} />
     </View>
   );
 }
@@ -46,5 +49,12 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 14,
     lineHeight: 20
+  },
+  missingData: {
+    color: colors.warning,
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 19,
+    marginTop: 4
   }
 });

@@ -1,14 +1,25 @@
-const scoreMap = {
-  good: 25,
-  medium: 14,
-  critical: 0
+const nutrientLevelLabels = {
+  fat: 'Fett',
+  saturatedFat: 'gesättigte Fettsäuren',
+  sugars: 'Zucker',
+  salt: 'Salz'
 };
 
-function priorityWeight(priority) {
-  if (priority === 'high') return 1.2;
-  if (priority === 'low') return 0.8;
-  return 1;
-}
+const nutriScoreValues = {
+  A: 100,
+  B: 86,
+  C: 65,
+  D: 35,
+  E: 15
+};
+
+const ecoScoreValues = {
+  A: 100,
+  B: 86,
+  C: 65,
+  D: 35,
+  E: 15
+};
 
 function statusFromScore(score) {
   if (score >= 78) return 'good';
@@ -23,40 +34,19 @@ function severityFromStatus(status) {
 }
 
 export function calculateProductRating(product, preferences) {
-  const avoidAllergens = preferences.avoidAllergens || [];
-  const matchingAllergens = (product.allergens || []).filter((allergen) =>
-    avoidAllergens.some((blockedAllergen) => blockedAllergen.toLowerCase() === allergen.toLowerCase())
-  );
-
-  const allergies = matchingAllergens.length > 0
-    ? {
-        status: 'critical',
-        message: `Enthält: ${matchingAllergens.join(', ')}.`
-      }
-    : {
-        status: 'good',
-        message: 'Keine hinterlegten Allergene gefunden.'
-      };
-
-  const nutrition = rateNutrition(product, preferences);
-  const sustainability = rateSustainability(product, preferences);
-  const budget = rateBudget(product, preferences);
-
   const categoryScores = {
-    allergies,
-    budget,
-    nutrition,
-    sustainability
+    allergies: rateAllergies(product, preferences),
+    budget: rateBudget(product, preferences),
+    nutrition: rateNutrition(product, preferences),
+    sustainability: rateSustainability(product, preferences)
   };
 
-  const weightedScores = [
-    scoreMap[allergies.status] * 1.35,
-    scoreMap[budget.status] * 1,
-    scoreMap[nutrition.status] * priorityWeight(preferences.nutritionPriority),
-    scoreMap[sustainability.status] * priorityWeight(preferences.sustainabilityPriority)
-  ];
-  const maxScore = 25 * (1.35 + 1 + priorityWeight(preferences.nutritionPriority) + priorityWeight(preferences.sustainabilityPriority));
-  const overallScore = Math.round((weightedScores.reduce((sum, value) => sum + value, 0) / maxScore) * 100);
+  const weights = ratingWeights(preferences);
+  const overallScore = Math.round(
+    Object.entries(categoryScores).reduce((sum, [category, value]) => (
+      sum + value.score * weights[category]
+    ), 0)
+  );
   const overallStatus = statusFromScore(overallScore);
 
   const reasons = Object.entries(categoryScores).map(([category, value]) => ({
@@ -74,77 +64,257 @@ export function calculateProductRating(product, preferences) {
   };
 }
 
+function ratingWeights() {
+  return {
+    allergies: 0.1,
+    budget: 0.25,
+    nutrition: 0.4,
+    sustainability: 0.25
+  };
+}
+
+function rateAllergies(product, preferences) {
+  const avoidAllergens = preferences.avoidAllergens || [];
+  const matchingAllergens = (product.allergens || []).filter((allergen) =>
+    avoidAllergens.some((blockedAllergen) => blockedAllergen.toLowerCase() === allergen.toLowerCase())
+  );
+  const completeness = product.dataCompleteness || {};
+  const missingData = missingMessages([
+    [completeness.allergens === false, 'Allergenangaben fehlen in Open Food Facts.']
+  ]);
+
+  if (matchingAllergens.length > 0) {
+    return withScore(0, `Enthält: ${matchingAllergens.join(', ')}.`, missingData);
+  }
+
+  return withScore(completeness.allergens === false ? 70 : 100, 'Keine hinterlegten Allergene gefunden.', missingData);
+}
+
 function rateNutrition(product, preferences) {
   const nutrition = product.nutrition || {};
+  const nutrientLevels = nutrition.nutrientLevels || {};
+  const highLevels = nutrientLevelEntries(nutrientLevels, 'high');
+  const moderateLevels = nutrientLevelEntries(nutrientLevels, 'moderate');
+  const missingData = missingMessages([
+    [!nutrition.nutriScore, 'Nutri-Score fehlt in Open Food Facts.'],
+    [Object.keys(nutrientLevels).length === 0 || !Object.values(nutrientLevels).some(Boolean), 'Nährwert-Level fehlen in Open Food Facts.'],
+    [preferences.preferredDiet === 'lowSugar' && typeof nutrition.sugarPer100g !== 'number', 'Zuckerwert pro 100 g fehlt.'],
+    [preferences.preferredDiet === 'highProtein' && !isBeverage(product) && typeof nutrition.proteinPer100g !== 'number', 'Proteinwert pro 100 g fehlt.']
+  ]);
+  const nutrientLevelStatus = statusFromNutrientLevels(highLevels, moderateLevels);
+  const nutrientLevelMessage = messageFromNutrientLevels(highLevels, moderateLevels);
+  const baseScore = nutritionScoreFromData(product, nutrition, nutrientLevels);
 
   if (preferences.preferredDiet === 'lowSugar') {
-    if ((nutrition.sugarPer100g || 0) > 22) {
-      return { status: 'critical', message: 'Sehr hoher Zuckergehalt für dein Ziel.' };
+    const score = Math.min(baseScore, sugarScore(nutrition.sugarPer100g, nutrientLevels.sugars));
+    if (score < 48) {
+      return withScore(score, nutrientLevelMessage || 'Sehr hoher Zuckergehalt für dein Ziel.', missingData);
     }
 
-    if ((nutrition.sugarPer100g || 0) > 8) {
-      return { status: 'medium', message: 'Zuckergehalt prüfen, liegt über deinem Ziel.' };
+    if (score < 78) {
+      return withScore(score, nutrientLevelMessage || 'Zuckergehalt prüfen, liegt über deinem Ziel.', missingData);
     }
+
+    return withScore(score, nutrientLevelMessage || 'Zuckergehalt passt gut zu deinem Ziel.', missingData);
   }
 
   if (preferences.preferredDiet === 'highProtein') {
-    if ((nutrition.proteinPer100g || 0) >= 10) {
-      return { status: 'good', message: 'Passt gut zu deinem Protein-Ziel.' };
+    if (isBeverage(product)) {
+      return withScore(baseScore, nutrientLevelMessage || 'Getränk: Protein wird für diese Kategorie nicht abgewertet.', missingData);
     }
 
-    return { status: 'medium', message: 'Proteinanteil ist eher niedrig.' };
+    const score = Math.min(baseScore, proteinScore(nutrition.proteinPer100g));
+    if (score < 78) {
+      return withScore(score, nutrientLevelMessage || 'Proteinanteil ist eher niedrig.', missingData);
+    }
+
+    return withScore(score, 'Passt gut zu deinem Protein-Ziel.', missingData);
   }
 
   if (preferences.preferredDiet === 'vegan' && (product.allergens || []).includes('Milch')) {
-    return { status: 'critical', message: 'Enthält Milch und passt nicht zu vegan.' };
+    return withScore(Math.min(baseScore, 5), 'Enthält Milch und passt nicht zu vegan.', missingData);
+  }
+
+  if (nutrientLevelStatus !== 'good') {
+    return withScore(baseScore, nutrientLevelMessage, missingData);
   }
 
   if (['A', 'B'].includes(nutrition.nutriScore)) {
-    return { status: 'good', message: `Nutri-Score ${nutrition.nutriScore} ist positiv.` };
+    return withScore(baseScore, `Nutri-Score ${nutrition.nutriScore} ist positiv.`, missingData);
   }
 
   if (nutrition.nutriScore === 'C') {
-    return { status: 'medium', message: 'Nutri-Score C: in Ordnung, aber nicht optimal.' };
+    return withScore(baseScore, 'Nutri-Score C: in Ordnung, aber nicht optimal.', missingData);
   }
 
-  return { status: 'critical', message: `Nutri-Score ${nutrition.nutriScore || 'unbekannt'} ist kritisch.` };
+  return withScore(baseScore, `Nutri-Score ${nutrition.nutriScore || 'unbekannt'} ist kritisch.`, missingData);
 }
 
 function rateSustainability(product, preferences) {
   const sustainability = product.sustainability || {};
+  const missingData = missingMessages([
+    [!sustainability.ecoScore, 'Eco-Score fehlt in Open Food Facts.'],
+    [!sustainability.originCountry, 'Herkunftsland fehlt in Open Food Facts.'],
+    [!sustainability.packaging, 'Verpackungsangabe fehlt in Open Food Facts.']
+  ]);
+  const score = sustainabilityScore(product, preferences);
 
-  if (preferences.preferBio && !sustainability.isBio) {
-    return { status: 'medium', message: 'Nicht Bio, obwohl Bio bevorzugt wird.' };
+  if (bioPreferenceApplies(product, preferences) && !sustainability.isBio) {
+    return withScore(score, 'Nicht Bio, obwohl Bio bevorzugt wird.', missingData);
   }
 
   if (['A', 'B'].includes(sustainability.ecoScore)) {
-    return { status: 'good', message: `Eco-Score ${sustainability.ecoScore} ist stark.` };
+    return withScore(score, `Eco-Score ${sustainability.ecoScore} ist stark.`, missingData);
   }
 
   if (sustainability.ecoScore === 'C') {
-    return { status: 'medium', message: 'Eco-Score C: akzeptabel, aber verbesserbar.' };
+    return withScore(score, 'Eco-Score C: akzeptabel, aber verbesserbar.', missingData);
   }
 
-  return { status: 'critical', message: `Eco-Score ${sustainability.ecoScore || 'unbekannt'} ist schwach.` };
+  return withScore(score, `Eco-Score ${sustainability.ecoScore || 'unbekannt'} ist schwach.`, missingData);
 }
 
 function rateBudget(product, preferences) {
+  const missingData = missingMessages([
+    [typeof product.price !== 'number', 'Produktpreis fehlt.'],
+    [typeof preferences.maxBudgetPerShoppingTrip !== 'number', 'Budgetlimit fehlt im Profil.']
+  ]);
+
   if (typeof product.price !== 'number' || typeof preferences.maxBudgetPerShoppingTrip !== 'number') {
-    return { status: 'medium', message: 'Preis oder Budget fehlt für eine genaue Prüfung.' };
+    return withScore(55, 'Preis oder Budget fehlt für eine genaue Prüfung.', missingData);
   }
 
   const share = product.price / preferences.maxBudgetPerShoppingTrip;
   const periodLabel = budgetPeriodLabel(preferences.budgetPeriod);
+  const score = budgetScore(share);
 
   if (share <= 0.08) {
-    return { status: 'good', message: `Preis passt gut zu deinem Budget pro ${periodLabel}.` };
+    return withScore(score, `Preis passt gut zu deinem Budget pro ${periodLabel}.`, missingData);
   }
 
   if (share <= 0.18) {
-    return { status: 'medium', message: `Preis ist für dein Budget pro ${periodLabel} spürbar, aber noch im Rahmen.` };
+    return withScore(score, `Preis ist für dein Budget pro ${periodLabel} spürbar, aber noch im Rahmen.`, missingData);
   }
 
-  return { status: 'critical', message: `Preis belastet dein Budget pro ${periodLabel} stark.` };
+  return withScore(score, `Preis belastet dein Budget pro ${periodLabel} stark.`, missingData);
+}
+
+function nutritionScoreFromData(product, nutrition, nutrientLevels) {
+  if (isWaterLike(product) && hasNoCriticalNutrients(nutrition, nutrientLevels)) {
+    return 98;
+  }
+
+  if (isBeverage(product) && !nutrition.nutriScore && hasNoCriticalNutrients(nutrition, nutrientLevels)) {
+    return 86;
+  }
+
+  const nutriScore = nutriScoreValues[nutrition.nutriScore] ?? 50;
+  const nutrientPenalty = Object.values(nutrientLevels || {}).reduce((penalty, level) => {
+    if (level === 'high') return penalty + 18;
+    if (level === 'moderate') return penalty + 8;
+    return penalty;
+  }, 0);
+
+  return clampScore(nutriScore - nutrientPenalty);
+}
+
+function sugarScore(sugarPer100g, sugarLevel) {
+  if (sugarLevel === 'high') {
+    return 25;
+  }
+
+  if (sugarLevel === 'moderate') {
+    return 62;
+  }
+
+  if (typeof sugarPer100g !== 'number') {
+    return 55;
+  }
+
+  if (sugarPer100g <= 5) return 100;
+  if (sugarPer100g <= 8) return interpolate(sugarPer100g, 5, 8, 100, 78);
+  if (sugarPer100g <= 22) return interpolate(sugarPer100g, 8, 22, 78, 35);
+  return clampScore(interpolate(Math.min(sugarPer100g, 45), 22, 45, 35, 5));
+}
+
+function proteinScore(proteinPer100g) {
+  if (typeof proteinPer100g !== 'number') {
+    return 55;
+  }
+
+  if (proteinPer100g >= 20) return 100;
+  if (proteinPer100g >= 10) return interpolate(proteinPer100g, 10, 20, 78, 100);
+  if (proteinPer100g >= 4) return interpolate(proteinPer100g, 4, 10, 45, 78);
+  return interpolate(Math.max(proteinPer100g, 0), 0, 4, 20, 45);
+}
+
+function sustainabilityScore(product, preferences) {
+  const sustainability = product.sustainability || {};
+  let score = ecoScoreValues[sustainability.ecoScore] ?? 50;
+
+  if (bioPreferenceApplies(product, preferences) && !sustainability.isBio) {
+    score -= 18;
+  }
+
+  if (!sustainability.originCountry) {
+    score -= 6;
+  }
+
+  if (!sustainability.packaging) {
+    score -= 6;
+  }
+
+  return clampScore(score);
+}
+
+function budgetScore(share) {
+  if (share <= 0.08) {
+    return interpolate(share, 0, 0.08, 100, 86);
+  }
+
+  if (share <= 0.18) {
+    return interpolate(share, 0.08, 0.18, 86, 55);
+  }
+
+  return clampScore(interpolate(Math.min(share, 0.4), 0.18, 0.4, 55, 0));
+}
+
+function statusFromNutrientLevels(highLevels, moderateLevels) {
+  if (highLevels.length >= 2 || highLevels.includes('sugars') || highLevels.includes('salt')) {
+    return 'critical';
+  }
+
+  if (highLevels.length > 0 || moderateLevels.length >= 2) {
+    return 'medium';
+  }
+
+  return 'good';
+}
+
+function messageFromNutrientLevels(highLevels, moderateLevels) {
+  if (highLevels.length > 0) {
+    return `Hohe Nährwert-Level: ${formatNutrientLevelList(highLevels)}.`;
+  }
+
+  if (moderateLevels.length >= 2) {
+    return `Mehrere mittlere Nährwert-Level: ${formatNutrientLevelList(moderateLevels)}.`;
+  }
+
+  if (moderateLevels.length === 1) {
+    return `Mittleres Nährwert-Level bei ${formatNutrientLevelList(moderateLevels)}.`;
+  }
+
+  return '';
+}
+
+function nutrientLevelEntries(levels, expectedLevel) {
+  return Object.entries(levels)
+    .filter(([, level]) => level === expectedLevel)
+    .map(([key]) => key);
+}
+
+function formatNutrientLevelList(keys) {
+  return keys.map((key) => nutrientLevelLabels[key] || key).join(', ');
 }
 
 function budgetPeriodLabel(period) {
@@ -156,4 +326,85 @@ function budgetPeriodLabel(period) {
   };
 
   return labels[period] || labels.week;
+}
+
+function withScore(score, message, missingData = []) {
+  const roundedScore = Math.round(clampScore(score));
+  return {
+    status: statusFromScore(roundedScore),
+    score: roundedScore,
+    message,
+    missingData
+  };
+}
+
+function interpolate(value, inputMin, inputMax, outputMin, outputMax) {
+  if (inputMax === inputMin) {
+    return outputMax;
+  }
+
+  const ratio = (value - inputMin) / (inputMax - inputMin);
+  return outputMin + ratio * (outputMax - outputMin);
+}
+
+function clampScore(score) {
+  return Math.max(0, Math.min(100, score));
+}
+
+function bioPreferenceApplies(product, preferences) {
+  return preferences.preferBio && !isBeverage(product);
+}
+
+function isWaterLike(product) {
+  const terms = productTerms(product);
+  return terms.some((term) =>
+    ['water', 'waters', 'wasser', 'mineral water', 'sparkling water', 'still water', 'eau'].includes(term)
+      || term.includes('mineralwasser')
+  );
+}
+
+function isBeverage(product) {
+  const terms = productTerms(product);
+  return terms.some((term) =>
+    ['beverage', 'beverages', 'drink', 'drinks', 'getränk', 'getränke', 'water', 'waters', 'wasser', 'juice', 'soda', 'cola', 'tea', 'coffee'].includes(term)
+      || term.includes('beverage')
+      || term.includes('drink')
+      || term.includes('getränk')
+  );
+}
+
+function hasNoCriticalNutrients(nutrition, nutrientLevels) {
+  const sugar = nutrition.sugarPer100g;
+  const salt = nutrition.saltPer100g;
+
+  return nutrientLevels.sugars !== 'high'
+    && nutrientLevels.salt !== 'high'
+    && nutrientLevels.fat !== 'high'
+    && nutrientLevels.saturatedFat !== 'high'
+    && (typeof sugar !== 'number' || sugar <= 5)
+    && (typeof salt !== 'number' || salt <= 0.3);
+}
+
+function productTerms(product) {
+  return [
+    product.category,
+    ...(product.categoryTags || []),
+    product.name
+  ]
+    .map(normalizeTerm)
+    .filter(Boolean);
+}
+
+function normalizeTerm(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/^[a-z]{2}:/, '')
+    .replace(/-/g, ' ')
+    .trim();
+}
+
+function missingMessages(entries) {
+  return entries
+    .filter(([isMissing]) => isMissing)
+    .map(([, message]) => message);
 }

@@ -13,7 +13,14 @@ import { calculateProductRating } from '../services/ratingService';
 import { colors } from '../utils/constants';
 import { formatPrice } from '../utils/formatPrice';
 
-export default function ProductDetailScreen({ product, preferences, onBack, onAddToList, onShowAlternatives }) {
+export default function ProductDetailScreen({
+  product,
+  preferences,
+  onBack,
+  onAddToList,
+  onSaveManualPrice,
+  onShowAlternatives
+}) {
   const [savedMessage, setSavedMessage] = useState('');
   const [manualPrice, setManualPrice] = useState('');
   const [priceError, setPriceError] = useState('');
@@ -34,6 +41,10 @@ export default function ProductDetailScreen({ product, preferences, onBack, onAd
       return;
     }
 
+    if (typeof pricedProduct.price === 'number') {
+      onSaveManualPrice(pricedProduct, pricedProduct.price);
+    }
+
     onAddToList(pricedProduct);
     setPriceError('');
     setSavedMessage('Produkt wurde zur Einkaufsliste hinzugefügt.');
@@ -44,7 +55,7 @@ export default function ProductDetailScreen({ product, preferences, onBack, onAd
       <AppHeader title="Produktbewertung" subtitle="Persönliche Einschätzung" onBack={onBack} />
 
       <View style={styles.productPanel}>
-        <ProductImage imageUrl={product.imageUrl} size="large" />
+        <ProductImage imageUrl={product.imageUrl} productName={product.name} size="large" />
         <View style={styles.topRow}>
           <View style={styles.copy}>
             <Text style={styles.brand}>{product.brand || 'Ohne Marke'}</Text>
@@ -52,6 +63,7 @@ export default function ProductDetailScreen({ product, preferences, onBack, onAd
             <Text style={styles.meta}>
               {product.category || 'Produkt'} · {formatPrice(pricedProduct.price, currency)}
             </Text>
+            <Text style={styles.source}>{sourceLabel(product.dataSource)}</Text>
           </View>
           <ProductScoreBadge status={rating.overallStatus} score={rating.overallScore} />
         </View>
@@ -116,6 +128,16 @@ function parseManualPrice(value) {
   return Math.round(parsedValue * 100) / 100;
 }
 
+function sourceLabel(source) {
+  const labels = {
+    cache: 'Quelle: lokaler Cache',
+    local: 'Quelle: lokale Beispieldaten',
+    'open-food-facts': 'Quelle: Open Food Facts'
+  };
+
+  return labels[source] || 'Quelle: unbekannt';
+}
+
 const styles = StyleSheet.create({
   productPanel: {
     backgroundColor: colors.surface,
@@ -150,6 +172,17 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 15,
     marginTop: 6
+  },
+  source: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#eef3ef',
+    borderRadius: 8,
+    color: colors.primaryDark,
+    fontSize: 12,
+    fontWeight: '800',
+    marginTop: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4
   },
   summary: {
     color: colors.text,

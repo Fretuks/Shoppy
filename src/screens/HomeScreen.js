@@ -9,6 +9,11 @@ import { calculateProductRating } from '../services/ratingService';
 import { colors } from '../utils/constants';
 
 export default function HomeScreen({ preferences, recentProducts, onStartScan, onOpenProduct }) {
+  const frequentProducts = [...recentProducts]
+    .filter((product) => (product.scanCount || 0) > 1)
+    .sort((a, b) => (b.scanCount || 0) - (a.scanCount || 0))
+    .slice(0, 3);
+
   return (
     <ScreenContainer>
       <AppHeader
@@ -24,6 +29,22 @@ export default function HomeScreen({ preferences, recentProducts, onStartScan, o
         </Text>
         <PrimaryButton label="Produkt scannen" onPress={onStartScan} />
       </View>
+
+      {frequentProducts.length > 0 ? (
+        <>
+          <SectionTitle>Häufig gekauft</SectionTitle>
+          {frequentProducts.map((product) => (
+            <View key={`frequent-${product.id}`} style={styles.frequentWrap}>
+              <ProductCard
+                product={product}
+                rating={calculateProductRating(product, preferences)}
+                onPress={() => onOpenProduct(product)}
+              />
+              <Text style={styles.scanCount}>{product.scanCount} Scans</Text>
+            </View>
+          ))}
+        </>
+      ) : null}
 
       <SectionTitle>Letzte Scans</SectionTitle>
       {recentProducts.length === 0 ? (
@@ -70,6 +91,16 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 16,
     lineHeight: 23
+  },
+  frequentWrap: {
+    gap: 6
+  },
+  scanCount: {
+    alignSelf: 'flex-start',
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '800',
+    marginLeft: 12
   },
   emptyState: {
     backgroundColor: colors.surface,

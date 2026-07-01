@@ -18,6 +18,7 @@ import { colors } from '../utils/constants';
 export default function ScanScreen({ preferences, productCache, onScanBarcode, onOpenProduct }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [isScanning, setIsScanning] = useState(true);
+  const [isLoadingProduct, setIsLoadingProduct] = useState(false);
   const [scanError, setScanError] = useState('');
   const [isErrorModalVisible, setIsErrorModalVisible] = useState(false);
   const [manualSearchQuery, setManualSearchQuery] = useState('');
@@ -28,7 +29,10 @@ export default function ScanScreen({ preferences, productCache, onScanBarcode, o
     if (!isScanning) return;
 
     setIsScanning(false);
-    const result = await onScanBarcode(event.data);
+    setIsLoadingProduct(true);
+    const result = await onScanBarcode(event.data).finally(() => {
+      setIsLoadingProduct(false);
+    });
 
     if (result?.status !== 'found') {
       setScanError(result?.errorMessage || 'Der Barcode konnte nicht verarbeitet werden.');
@@ -70,7 +74,7 @@ export default function ScanScreen({ preferences, productCache, onScanBarcode, o
 
       {hasCameraAccess ? (
         <>
-          <BarcodeScannerView isScanning={isScanning} onBarcodeScanned={handleBarcodeScanned} />
+          <BarcodeScannerView isLoadingProduct={isLoadingProduct} isScanning={isScanning} onBarcodeScanned={handleBarcodeScanned} />
           <SecondaryButton
             label={isScanning ? 'Scan pausieren' : 'Scan fortsetzen'}
             onPress={() => setIsScanning((current) => !current)}
@@ -82,6 +86,7 @@ export default function ScanScreen({ preferences, productCache, onScanBarcode, o
           <Text style={styles.permissionCopy}>
             Auf Web oder ohne Kamera kannst du Open-Food-Facts-Barcodes testen.
           </Text>
+          {isLoadingProduct ? <Text style={styles.note}>Produkt wird geladen...</Text> : null}
           <View style={styles.demoRow}>
             <SecondaryButton label="Nutella" onPress={() => handleBarcodeScanned({ data: '3017620422003' })} />
             <SecondaryButton label="OpenFoodFacts Beispiel" onPress={() => handleBarcodeScanned({ data: '737628064502' })} />

@@ -4,6 +4,7 @@ const keys = {
   preferences: 'shoppy.preferences',
   shoppingList: 'shoppy.shoppingList',
   productCache: 'shoppy.productCache',
+  manualPrices: 'shoppy.manualPrices',
   recentProducts: 'shoppy.recentProducts'
 };
 
@@ -23,6 +24,8 @@ export const storageService = {
   saveShoppingList: (shoppingList) => writeJson(keys.shoppingList, shoppingList),
   loadProductCache: () => readJson(keys.productCache, {}),
   saveProductCache: (cache) => writeJson(keys.productCache, cache),
+  loadManualPrices: () => readJson(keys.manualPrices, {}),
+  saveManualPrices: (prices) => writeJson(keys.manualPrices, prices),
   loadRecentProducts: () => readJson(keys.recentProducts, []),
   saveRecentProducts: (products) => writeJson(keys.recentProducts, products)
 };
