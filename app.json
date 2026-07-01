@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Shoppy",
+    "slug": "shoppy",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#f7f3ea"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#f7f3ea"
+      }
+    }
+  }
+}
