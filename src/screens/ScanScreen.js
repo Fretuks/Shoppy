@@ -80,11 +80,11 @@ export default function ScanScreen({ preferences, productCache, onScanBarcode, o
         <View style={styles.permissionBox}>
           <Text style={styles.permissionTitle}>Scanner-Simulation</Text>
           <Text style={styles.permissionCopy}>
-            Auf Web oder ohne Kamera kannst du mit Beispiel-Barcodes testen.
+            Auf Web oder ohne Kamera kannst du Open-Food-Facts-Barcodes testen.
           </Text>
           <View style={styles.demoRow}>
-            <SecondaryButton label="Bio Haferdrink" onPress={() => handleBarcodeScanned({ data: '7610200336707' })} />
-            <SecondaryButton label="Schoko-Riegel" onPress={() => handleBarcodeScanned({ data: '7612345001112' })} />
+            <SecondaryButton label="Nutella" onPress={() => handleBarcodeScanned({ data: '3017620422003' })} />
+            <SecondaryButton label="OpenFoodFacts Beispiel" onPress={() => handleBarcodeScanned({ data: '737628064502' })} />
           </View>
         </View>
       )}

@@ -22,6 +22,7 @@ Die App richtet sich an Privatpersonen, die im Supermarkt schnell bessere Kaufen
 - Manuelle Produktsuche, falls der Barcode nicht erkannt wird
 - Lokale Einkaufsliste mit Menge, Preis, Abhaken und Löschen
 - Lokaler Produktcache und Offline-Modus für gespeicherte Produkte
+- Produktdaten per Barcode aus der Open-Food-Facts-API
 - Später geplant: erweiterte Profile, Budgettracking, Nachhaltigkeitsfilter und Rezeptvorschläge
 
 ## One-Pager
@@ -40,6 +41,7 @@ Der One-Pager aus Aufgabe 6.1 beschreibt das Go-to-Market-Konzept:
 - React Native
 - JavaScript
 - Smartphone-Kamera und Barcode-Scanner
+- Open Food Facts API für Barcode-Produktdaten
 - Lokale Speicherung persönlicher Präferenzen
 - GitHub oder GitLab für Versionsverwaltung und Abgabe
 
@@ -66,20 +68,20 @@ Shoppy/
 Die App enthält jetzt einen MVP-Flow mit Bottom-Tabs:
 
 - Home: Startseite und letzte Scans
-- Scan: Kamera-Scanner, Beispiel-Barcodes und manuelle Suche
+- Scan: Kamera-Scanner mit Open Food Facts, Beispiel-Barcodes und manuelle Suche
 - Produktdetail: Ampelbewertung nach Allergien, Budget, Ernährung und Nachhaltigkeit
 - Alternativen: bessere Produktvorschläge aus dem lokalen Beispieldatensatz
 - Einkaufsliste: Produkte hinzufügen, abhaken, löschen und Gesamtsumme sehen
 - Profil: Präferenzen, Allergien, Budget, Bio-Vorliebe und Offline-Modus verwalten
 
-Beispiel-Barcodes für Tests ohne echte Produkte:
+Beispiel-Barcodes für Tests über Open Food Facts:
 
 ```text
-7610200336707 - Bio Haferdrink
-7612345001112 - Erdnuss Schoko-Riegel
-7612345002225 - Protein Joghurt Beeren
-7612345003338 - Vegane Linsen-Bowl
+3017620422003 - Nutella
+737628064502 - Open-Food-Facts-Beispielprodukt
 ```
+
+Die App nutzt für Barcodes `https://world.openfoodfacts.org/api/v2/product/{barcode}.json`. Wenn ein Produkt bereits lokal gespeichert ist oder der Offline-Modus aktiv ist, wird zuerst der lokale Cache verwendet.
 
 ## Runbook
 
