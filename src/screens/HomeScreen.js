@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import PrimaryButton from '../components/PrimaryButton';
 
 export default function HomeScreen() {
-  const [status, setStatus] = useState('Bereit fuer deine erste Einkaufsliste.');
+  const [status, setStatus] = useState('Bereit für deinen ersten Produkt-Scan.');
 
   return (
     <View style={styles.screen}>
@@ -12,7 +12,7 @@ export default function HomeScreen() {
         <Text style={styles.eyebrow}>Smart Shopping Companion</Text>
         <Text style={styles.title}>Shoppy</Text>
         <Text style={styles.subtitle}>
-          Plane Einkaeufe schneller, behalte Listen im Blick und spare Zeit im Laden.
+          Scanne Produkte im Supermarkt und erhalte eine persönliche Kaufempfehlung.
         </Text>
       </View>
 
@@ -20,8 +20,8 @@ export default function HomeScreen() {
         <Text style={styles.panelTitle}>Startseite</Text>
         <Text style={styles.status}>{status}</Text>
         <PrimaryButton
-          label="Liste vorbereiten"
-          onPress={() => setStatus('Demo-Status: Deine Einkaufsliste wird vorbereitet.')}
+          label="Produkt scannen"
+          onPress={() => setStatus('Demo-Status: Scanner und Bewertung werden vorbereitet.')}
         />
       </View>
     </View>
