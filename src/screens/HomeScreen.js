@@ -1,81 +1,92 @@
-import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import PrimaryButton from '../components/PrimaryButton';
+import AppHeader from '../components/layout/AppHeader';
+import ScreenContainer from '../components/layout/ScreenContainer';
+import SectionTitle from '../components/layout/SectionTitle';
+import ProductCard from '../components/product/ProductCard';
+import { calculateProductRating } from '../services/ratingService';
+import { colors } from '../utils/constants';
 
-export default function HomeScreen() {
-  const [status, setStatus] = useState('Bereit für deinen ersten Produkt-Scan.');
-
+export default function HomeScreen({ preferences, recentProducts, onStartScan, onOpenProduct }) {
   return (
-    <View style={styles.screen}>
-      <View style={styles.header}>
+    <ScreenContainer>
+      <AppHeader
+        title="Shoppy"
+        subtitle="Scanne Produkte im Supermarkt und erhalte eine persönliche Kaufempfehlung."
+      />
+
+      <View style={styles.hero}>
         <Text style={styles.eyebrow}>Smart Shopping Companion</Text>
-        <Text style={styles.title}>Shoppy</Text>
-        <Text style={styles.subtitle}>
-          Scanne Produkte im Supermarkt und erhalte eine persönliche Kaufempfehlung.
+        <Text style={styles.title}>Bereit für den nächsten Einkauf?</Text>
+        <Text style={styles.copy}>
+          Prüfe Allergien, Ernährung, Budget und Nachhaltigkeit direkt am Regal.
         </Text>
+        <PrimaryButton label="Produkt scannen" onPress={onStartScan} />
       </View>
 
-      <View style={styles.panel}>
-        <Text style={styles.panelTitle}>Startseite</Text>
-        <Text style={styles.status}>{status}</Text>
-        <PrimaryButton
-          label="Produkt scannen"
-          onPress={() => setStatus('Demo-Status: Scanner und Bewertung werden vorbereitet.')}
-        />
-      </View>
-    </View>
+      <SectionTitle>Letzte Scans</SectionTitle>
+      {recentProducts.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyTitle}>Noch keine Produkte gescannt</Text>
+          <Text style={styles.emptyCopy}>Starte einen Scan oder nutze die manuelle Suche.</Text>
+        </View>
+      ) : (
+        recentProducts.map((product) => (
+          <ProductCard
+            key={product.id}
+            product={product}
+            rating={calculateProductRating(product, preferences)}
+            onPress={() => onOpenProduct(product)}
+          />
+        ))
+      )}
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 24
-  },
-  header: {
-    marginBottom: 28
+  hero: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 12,
+    padding: 18
   },
   eyebrow: {
-    color: '#256f5b',
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 8,
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: '800',
     textTransform: 'uppercase'
   },
   title: {
-    color: '#18201d',
-    fontSize: 42,
+    color: colors.text,
+    fontSize: 25,
     fontWeight: '800',
-    marginBottom: 10
+    lineHeight: 31
   },
-  subtitle: {
-    color: '#4f5f59',
-    fontSize: 17,
-    lineHeight: 24
-  },
-  panel: {
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    gap: 16,
-    padding: 20,
-    shadowColor: '#000000',
-    shadowOffset: {
-      height: 4,
-      width: 0
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 12
-  },
-  panelTitle: {
-    color: '#18201d',
-    fontSize: 20,
-    fontWeight: '700'
-  },
-  status: {
-    color: '#4f5f59',
+  copy: {
+    color: colors.muted,
     fontSize: 16,
-    lineHeight: 22
+    lineHeight: 23
+  },
+  emptyState: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    padding: 18
+  },
+  emptyTitle: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '800'
+  },
+  emptyCopy: {
+    color: colors.muted,
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 4
   }
 });

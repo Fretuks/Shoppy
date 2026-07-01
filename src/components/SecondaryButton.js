@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text } from 'react-native';
 
 import { colors } from '../utils/constants';
 
-export default function PrimaryButton({ label, onPress, disabled = false }) {
+export default function SecondaryButton({ label, onPress, disabled = false }) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -22,21 +22,22 @@ export default function PrimaryButton({ label, onPress, disabled = false }) {
 const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
-    backgroundColor: colors.primary,
+    borderColor: colors.primary,
     borderRadius: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 14
+    borderWidth: 1,
+    paddingHorizontal: 18,
+    paddingVertical: 12
   },
   buttonPressed: {
-    opacity: 0.82
-  },
-  label: {
-    color: colors.surface,
-    fontSize: 16,
-    fontWeight: '700'
+    opacity: 0.75
   },
   disabled: {
-    backgroundColor: colors.border
+    borderColor: colors.border
+  },
+  label: {
+    color: colors.primary,
+    fontSize: 15,
+    fontWeight: '700'
   },
   disabledLabel: {
     color: colors.muted
