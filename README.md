@@ -21,6 +21,7 @@ Die App richtet sich an Privatpersonen, die im Supermarkt schnell bessere Kaufen
 - Kurze Begründung zur Bewertung und mögliche Alternativhinweise
 - Manuelle Produktsuche, falls der Barcode nicht erkannt wird
 - Lokale Einkaufsliste mit Menge, Preis, Abhaken und Löschen
+- Manuelle Preiseingabe, wenn Open Food Facts keinen Artikelpreis liefert
 - Lokaler Produktcache und Offline-Modus für gespeicherte Produkte
 - Produktdaten per Barcode aus der Open-Food-Facts-API
 - Später geplant: erweiterte Profile, Budgettracking, Nachhaltigkeitsfilter und Rezeptvorschläge

@@ -49,7 +49,14 @@ export default function AlternativesScreen({ product, preferences, productCache,
         <AlternativeProductCard
           item={item}
           key={item.product.id}
-          onChoose={() => onChoose(item.product)}
+          onChoose={() => {
+            if (typeof item.product.price === 'number') {
+              onChoose(item.product);
+              return;
+            }
+
+            onOpenProduct(item.product);
+          }}
           onOpen={() => onOpenProduct(item.product)}
         />
       ))}

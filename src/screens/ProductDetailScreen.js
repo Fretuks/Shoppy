@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 
 import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
@@ -15,10 +15,27 @@ import { formatPrice } from '../utils/formatPrice';
 
 export default function ProductDetailScreen({ product, preferences, onBack, onAddToList, onShowAlternatives }) {
   const [savedMessage, setSavedMessage] = useState('');
+  const [manualPrice, setManualPrice] = useState('');
+  const [priceError, setPriceError] = useState('');
   const rating = useMemo(() => calculateProductRating(product, preferences), [product, preferences]);
+  const hasProductPrice = typeof product.price === 'number';
+  const currency = product.currency || preferences.currency;
 
   function addToList() {
-    onAddToList(product);
+    const parsedManualPrice = parseManualPrice(manualPrice);
+
+    if (!hasProductPrice && parsedManualPrice === undefined) {
+      setSavedMessage('');
+      setPriceError('Bitte gib einen Preis ein, bevor du das Produkt hinzufügst.');
+      return;
+    }
+
+    onAddToList({
+      ...product,
+      currency,
+      price: hasProductPrice ? product.price : parsedManualPrice
+    });
+    setPriceError('');
     setSavedMessage('Produkt wurde zur Einkaufsliste hinzugefügt.');
   }
 
@@ -32,7 +49,9 @@ export default function ProductDetailScreen({ product, preferences, onBack, onAd
           <View style={styles.copy}>
             <Text style={styles.brand}>{product.brand || 'Ohne Marke'}</Text>
             <Text style={styles.name}>{product.name}</Text>
-            <Text style={styles.meta}>{product.category} · {formatPrice(product.price, product.currency)}</Text>
+            <Text style={styles.meta}>
+              {product.category || 'Produkt'} · {formatPrice(product.price, currency)}
+            </Text>
           </View>
           <ProductScoreBadge status={rating.overallStatus} score={rating.overallScore} />
         </View>
@@ -40,6 +59,30 @@ export default function ProductDetailScreen({ product, preferences, onBack, onAd
           Empfehlung: {rating.overallStatus === 'good' ? 'kaufen' : rating.overallStatus === 'medium' ? 'prüfen' : 'meiden'}.
         </Text>
       </View>
+
+      {!hasProductPrice ? (
+        <View style={styles.pricePanel}>
+          <Text style={styles.priceTitle}>Preis ergänzen</Text>
+          <Text style={styles.priceCopy}>
+            Open Food Facts liefert keine Preise. Gib den Ladenpreis ein, damit die Einkaufsliste und Budgetprüfung stimmen.
+          </Text>
+          <View style={styles.priceInputRow}>
+            <Text style={styles.currency}>{currency}</Text>
+            <TextInput
+              keyboardType="decimal-pad"
+              onChangeText={(value) => {
+                setManualPrice(value);
+                setPriceError('');
+              }}
+              placeholder="z. B. 3.50"
+              placeholderTextColor={colors.muted}
+              style={styles.priceInput}
+              value={manualPrice}
+            />
+          </View>
+          {priceError ? <Text style={styles.errorText}>{priceError}</Text> : null}
+        </View>
+      ) : null}
 
       <SectionTitle>Bewertungskriterien</SectionTitle>
       {Object.entries(rating.categoryScores).map(([category, categoryRating]) => (
@@ -60,6 +103,17 @@ export default function ProductDetailScreen({ product, preferences, onBack, onAd
       <SecondaryButton label="Alternative anzeigen" onPress={() => onShowAlternatives(product)} />
     </ScreenContainer>
   );
+}
+
+function parseManualPrice(value) {
+  const normalizedValue = value.trim().replace(',', '.');
+  const parsedValue = Number(normalizedValue);
+
+  if (!normalizedValue || !Number.isFinite(parsedValue) || parsedValue <= 0) {
+    return undefined;
+  }
+
+  return Math.round(parsedValue * 100) / 100;
 }
 
 const styles = StyleSheet.create({
@@ -101,6 +155,49 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 16,
     fontWeight: '700'
+  },
+  pricePanel: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 10,
+    padding: 16
+  },
+  priceTitle: {
+    color: colors.text,
+    fontSize: 17,
+    fontWeight: '800'
+  },
+  priceCopy: {
+    color: colors.muted,
+    fontSize: 14,
+    lineHeight: 20
+  },
+  priceInputRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10
+  },
+  currency: {
+    color: colors.muted,
+    fontSize: 16,
+    fontWeight: '800'
+  },
+  priceInput: {
+    borderColor: colors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    color: colors.text,
+    flex: 1,
+    fontSize: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10
+  },
+  errorText: {
+    color: colors.danger,
+    fontSize: 13,
+    fontWeight: '800'
   },
   dataPanel: {
     backgroundColor: colors.surface,
