@@ -14,8 +14,10 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "Shoppy nutzt die Kamera, um Produkt-Barcodes im Supermarkt zu scannen."
-      }
+        "NSCameraUsageDescription": "Shoppy nutzt die Kamera, um Produkt-Barcodes im Supermarkt zu scannen.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "net.fretux.shoppy"
     },
     "android": {
       "permissions": [
@@ -23,6 +25,12 @@
       ],
       "adaptiveIcon": {
         "backgroundColor": "#f7f3ea"
+      },
+      "package": "net.fretux.shoppy"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "a7a5424e-5049-4040-9c82-06cab416c228"
       }
     }
   }

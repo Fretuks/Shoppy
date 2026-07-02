@@ -6,6 +6,7 @@ const INTERNAL_ALTERNATIVE_LIMIT = 8;
 
 const improvementLabels = {
   allergies: 'Besser passend bei Allergien',
+  ingredients: 'Bessere Zutaten',
   budget: 'Günstiger fürs Budget',
   nutrition: 'Bessere Ernährung',
   sustainability: 'Nachhaltiger'
@@ -148,6 +149,8 @@ function knownDataScore(product) {
   return [
     [hasKnownAllergens(product), 3],
     [completeness.allergens !== false, 2],
+    [completeness.ingredients !== false, 2],
+    [completeness.additives !== false, 1],
     [Boolean(nutrition.nutriScore), 2],
     [hasNutrientLevels(nutrition), 2],
     [completeness.nutrition !== false, 1],

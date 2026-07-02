@@ -14,11 +14,15 @@ const productFields = [
   'ingredients_text',
   'ingredients_text_de',
   'ingredients_text_en',
+  'ingredients_analysis_tags',
+  'ingredients_from_palm_oil_tags',
+  'additives_tags',
   'allergens_tags',
   'nutriments',
   'nutrient_levels',
   'nutriscore_grade',
   'ecoscore_grade',
+  'ecoscore_data',
   'labels_tags',
   'origins',
   'origins_tags',
@@ -133,12 +137,19 @@ function mapOpenFoodFactsProduct(product, fallbackBarcode) {
     price: undefined,
     currency: 'CHF',
     ingredients: parseIngredients(product.ingredients_text_de || product.ingredients_text || product.ingredients_text_en),
+    ingredientAnalysis: {
+      vegan: analysisStatus(product.ingredients_analysis_tags, 'vegan'),
+      vegetarian: analysisStatus(product.ingredients_analysis_tags, 'vegetarian'),
+      palmOil: palmOilStatus(product.ingredients_analysis_tags, product.ingredients_from_palm_oil_tags),
+      additives: normalizeAdditives(product.additives_tags || [])
+    },
     allergens: normalizeAllergens(product.allergens_tags || []),
     nutrition: {
       caloriesPer100g: numberOrUndefined(nutriments['energy-kcal_100g']),
       sugarPer100g: numberOrUndefined(nutriments.sugars_100g),
       caffeineMgPer100g: normalizeCaffeineMg(nutriments.caffeine_100g),
       fatPer100g: numberOrUndefined(nutriments.fat_100g),
+      saturatedFatPer100g: numberOrUndefined(nutriments['saturated-fat_100g']),
       proteinPer100g: numberOrUndefined(nutriments.proteins_100g),
       saltPer100g: numberOrUndefined(nutriments.salt_100g),
       nutrientLevels: normalizeNutrientLevels(product.nutrient_levels),
@@ -146,12 +157,14 @@ function mapOpenFoodFactsProduct(product, fallbackBarcode) {
     },
     sustainability: {
       ecoScore: normalizeGrade(product.ecoscore_grade),
+      carbonFootprintKgCo2ePerKg: numberOrUndefined(product.ecoscore_data?.agribalyse?.co2_total),
       isBio: hasOrganicLabel(product.labels_tags || []),
       originCountry: firstOrigin(product.origins, product.origins_tags, product.countries_tags),
       packaging: firstTextValue(product.packaging)
     },
     dataCompleteness: {
       allergens: Array.isArray(product.allergens_tags),
+      additives: Array.isArray(product.additives_tags),
       ecoScore: Boolean(normalizeGrade(product.ecoscore_grade)),
       ingredients: Boolean(product.ingredients_text_de || product.ingredients_text || product.ingredients_text_en),
       nutriScore: Boolean(normalizeGrade(product.nutriscore_grade)),
@@ -216,6 +229,48 @@ function parseIngredients(ingredientsText) {
     .map((ingredient) => ingredient.trim())
     .filter(Boolean)
     .slice(0, 16);
+}
+
+function analysisStatus(analysisTags = [], diet) {
+  if (analysisTags.includes(`en:${diet}`)) {
+    return true;
+  }
+
+  if (analysisTags.includes(`en:non-${diet}`)) {
+    return false;
+  }
+
+  if (analysisTags.includes(`en:${diet}-status-unknown`)) {
+    return undefined;
+  }
+
+  return undefined;
+}
+
+function palmOilStatus(analysisTags = [], palmOilTags = []) {
+  if (analysisTags.includes('en:palm-oil') || palmOilTags.length > 0) {
+    return true;
+  }
+
+  if (analysisTags.includes('en:palm-oil-free')) {
+    return false;
+  }
+
+  if (analysisTags.includes('en:palm-oil-content-unknown')) {
+    return undefined;
+  }
+
+  return undefined;
+}
+
+function normalizeAdditives(additiveTags) {
+  return additiveTags
+    .map((tag) => {
+      const cleanedTag = cleanTag(tag);
+      const codeMatch = String(tag || '').match(/\be\d{3,4}[a-z]?\b/i);
+      return codeMatch && cleanedTag ? `${codeMatch[0].toUpperCase()} ${cleanedTag}` : cleanedTag;
+    })
+    .filter(Boolean);
 }
 
 function normalizeAllergens(allergenTags) {

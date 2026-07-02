@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../utils/constants';
 import ProductScoreBadge from './ProductScoreBadge';
@@ -6,13 +6,16 @@ import ProductScoreBadge from './ProductScoreBadge';
 const labels = {
   allergies: 'Allergien',
   budget: 'Budget',
+  ingredients: 'Zutaten',
   nutrition: 'Ernährung',
   sustainability: 'Nachhaltigkeit'
 };
 
-export default function RatingCategoryRow({ category, rating }) {
+export default function RatingCategoryRow({ category, rating, onPress }) {
+  const Container = onPress ? Pressable : View;
+
   return (
-    <View style={styles.row}>
+    <Container accessibilityRole={onPress ? 'button' : undefined} onPress={onPress} style={styles.row}>
       <View style={styles.copy}>
         <Text style={styles.title}>{labels[category] || category}</Text>
         <Text style={styles.message}>{rating.message}</Text>
@@ -21,7 +24,8 @@ export default function RatingCategoryRow({ category, rating }) {
         ))}
       </View>
       <ProductScoreBadge status={rating.status} score={rating.score} />
-    </View>
+      {onPress ? <Text style={styles.chevron}>›</Text> : null}
+    </Container>
   );
 }
 
@@ -56,5 +60,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 19,
     marginTop: 4
+  },
+  chevron: {
+    color: colors.muted,
+    fontSize: 24,
+    fontWeight: '700'
   }
 });

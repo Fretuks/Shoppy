@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
 import BottomTabBar from './src/components/layout/BottomTabBar';
@@ -7,6 +7,7 @@ import AlternativesScreen from './src/screens/AlternativesScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import ProductDetailScreen from './src/screens/ProductDetailScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import RatingCriteriaDetailScreen from './src/screens/RatingCriteriaDetailScreen';
 import ScanScreen from './src/screens/ScanScreen';
 import ShoppingListScreen from './src/screens/ShoppingListScreen';
 import { lookupProductByBarcode } from './src/services/productApi';
@@ -89,6 +90,12 @@ export default function App() {
 
   const routeProduct = route.product;
 
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', goBackFromRoute);
+
+    return () => subscription.remove();
+  }, [route]);
+
   const tabScreen = useMemo(() => {
     if (activeTab === 'scan') {
       return (
@@ -158,6 +165,10 @@ export default function App() {
 
   function showAlternatives(product) {
     setRoute({ name: 'alternatives', product });
+  }
+
+  function showRatingCriteria(product, category) {
+    setRoute({ name: 'ratingCriteria', product, category });
   }
 
   function addProductToCache(product) {
@@ -322,6 +333,25 @@ export default function App() {
     setRoute({ name: 'tabs' });
   }
 
+  function goBackFromRoute() {
+    if (route.name === 'ratingCriteria' && routeProduct) {
+      setRoute({ name: 'productDetail', product: routeProduct });
+      return true;
+    }
+
+    if (route.name === 'alternatives' && routeProduct) {
+      setRoute({ name: 'productDetail', product: routeProduct });
+      return true;
+    }
+
+    if (route.name === 'productDetail' && routeProduct) {
+      setRoute({ name: 'tabs' });
+      return true;
+    }
+
+    return false;
+  }
+
   function renderRoute() {
     if (!isHydrated) {
       return (
@@ -337,7 +367,19 @@ export default function App() {
           onAddToList={addProductToShoppingList}
           onBack={goBackToTabs}
           onSaveManualPrice={saveManualPriceForProduct}
+          onShowRatingCriteria={showRatingCriteria}
           onShowAlternatives={showAlternatives}
+          preferences={preferences}
+          product={routeProduct}
+        />
+      );
+    }
+
+    if (route.name === 'ratingCriteria' && routeProduct) {
+      return (
+        <RatingCriteriaDetailScreen
+          category={route.category}
+          onBack={goBackFromRoute}
           preferences={preferences}
           product={routeProduct}
         />
@@ -347,7 +389,7 @@ export default function App() {
     if (route.name === 'alternatives' && routeProduct) {
       return (
         <AlternativesScreen
-          onBack={() => setRoute({ name: 'productDetail', product: routeProduct })}
+          onBack={goBackFromRoute}
           onChoose={(product) => {
             addProductToShoppingList(product);
             setActiveTab('list');

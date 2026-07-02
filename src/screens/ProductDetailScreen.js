@@ -19,6 +19,7 @@ export default function ProductDetailScreen({
   onBack,
   onAddToList,
   onSaveManualPrice,
+  onShowRatingCriteria,
   onShowAlternatives
 }) {
   const [savedMessage, setSavedMessage] = useState('');
@@ -98,7 +99,12 @@ export default function ProductDetailScreen({
 
       <SectionTitle>Bewertungskriterien</SectionTitle>
       {Object.entries(rating.categoryScores).map(([category, categoryRating]) => (
-        <RatingCategoryRow category={category} key={category} rating={categoryRating} />
+        <RatingCategoryRow
+          category={category}
+          key={category}
+          onPress={() => onShowRatingCriteria(pricedProduct, category)}
+          rating={categoryRating}
+        />
       ))}
 
       <SectionTitle>Produktdaten</SectionTitle>
